@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::{
     ffi::CString,
     sync::{Once, ONCE_INIT},
@@ -14,7 +15,6 @@ use objc_foundation::{
     INSArray, INSData, INSDictionary, INSString, NSArray, NSData, NSDictionary, NSObject, NSString,
 };
 use objc_id::{Id, Shared};
-
 use uuid::Uuid;
 
 use crate::gatt::service::Service;
@@ -89,8 +89,7 @@ impl PeripheralManager {
 
         let peripheral_manager_delegate = unsafe {
             let cls = Class::get(PERIPHERAL_MANAGER_DELEGATE_CLASS_NAME).unwrap();
-            let mut obj: *mut Object = msg_send![cls, alloc];
-            obj = msg_send![obj, init];
+            let mut obj: *mut Object = msg_send![cls, new];
             Id::from_ptr(obj).share()
         };
 
@@ -99,16 +98,16 @@ impl PeripheralManager {
         }
     }
 
-    pub fn is_powered(self: &Self) -> bool {
+    pub fn is_powered(&self) -> bool {
         unsafe {
-            let powered_on = *self
+            let powered_on = self
                 .peripheral_manager_delegate
                 .get_ivar::<*mut Object>(POWERED_ON_IVAR);
             powered_on.into_bool()
         }
     }
 
-    pub fn start_advertising(self: &Self, name: &str, uuids: &[Uuid]) {
+    pub fn start_advertising(&self, name: &str, uuids: &[Uuid]) {
         let peripheral_manager = unsafe {
             *self
                 .peripheral_manager_delegate
@@ -138,11 +137,12 @@ impl PeripheralManager {
 
         let advertising_data = NSDictionary::from_keys_and_objects(keys.as_slice(), objects);
         unsafe {
-            let _: Result<(), ()> = msg_send![peripheral_manager, startAdvertising: advertising_data];
+            let _: Result<(), ()> =
+                msg_send![peripheral_manager, startAdvertising: advertising_data];
         }
     }
 
-    pub fn stop_advertising(self: &Self) {
+    pub fn stop_advertising(&self) {
         unsafe {
             let peripheral_manager = *self
                 .peripheral_manager_delegate
@@ -151,7 +151,7 @@ impl PeripheralManager {
         }
     }
 
-    pub fn is_advertising(self: &Self) -> bool {
+    pub fn is_advertising(&self) -> bool {
         unsafe {
             let peripheral_manager = *self
                 .peripheral_manager_delegate
@@ -161,7 +161,7 @@ impl PeripheralManager {
         }
     }
 
-    pub fn add_service(self: &Self, service: &Service) {
+    pub fn add_service(&self, service: &Service) {
         let characteristics: Vec<Id<NSObject>> = service
             .characteristics
             .iter()

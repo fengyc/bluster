@@ -10,6 +10,8 @@ use super::{
     ffi::{CBATTError, CBManagerState},
     into_bool::IntoBool,
 };
+use std::sync::atomic::AtomicBool;
+use std::sync::RwLock;
 
 // TODO: Implement event stream for all below callback
 
@@ -18,30 +20,32 @@ pub extern "C" fn peripheral_manager_did_update_state(
     _cmd: Sel,
     peripheral: *mut Object,
 ) {
-    println!("peripheral_manager_did_update_state");
+    log::debug!("peripheral_manager_did_update_state");
 
     unsafe {
         let state: CBManagerState = msg_send![peripheral, state];
         match state {
             CBManagerState::CBManagerStateUnknown => {
-                println!("CBManagerStateUnknown");
+                log::debug!("CBManagerStateUnknown");
             }
             CBManagerState::CBManagerStateResetting => {
-                println!("CBManagerStateResetting");
+                log::debug!("CBManagerStateResetting");
             }
             CBManagerState::CBManagerStateUnsupported => {
-                println!("CBManagerStateUnsupported");
+                log::debug!("CBManagerStateUnsupported");
             }
             CBManagerState::CBManagerStateUnauthorized => {
-                println!("CBManagerStateUnauthorized");
+                log::debug!("CBManagerStateUnauthorized");
             }
             CBManagerState::CBManagerStatePoweredOff => {
-                println!("CBManagerStatePoweredOff");
+                log::debug!("CBManagerStatePoweredOff");
                 delegate.set_ivar::<*mut Object>(POWERED_ON_IVAR, NO as *mut Object);
             }
             CBManagerState::CBManagerStatePoweredOn => {
-                println!("CBManagerStatePoweredOn");
+                log::debug!("CBManagerStatePoweredOn");
                 delegate.set_ivar::<*mut Object>(POWERED_ON_IVAR, YES as *mut Object);
+                let stat = delegate.get_ivar::<*mut Object>(POWERED_ON_IVAR);
+                log::debug!("power status: {}", stat.into_bool());
             }
         };
     }
@@ -53,11 +57,11 @@ pub extern "C" fn peripheral_manager_did_start_advertising_error(
     _peripheral: *mut Object,
     error: *mut Object,
 ) {
-    println!("peripheral_manager_did_start_advertising_error");
+    log::debug!("peripheral_manager_did_start_advertising_error");
     if error.into_bool() {
         let localized_description: *mut Object = unsafe { msg_send![error, localizedDescription] };
         let string = localized_description as *mut NSString;
-        println!("{:?}", unsafe { (*string).as_str() });
+        log::debug!("{:?}", unsafe { (*string).as_str() });
     }
 }
 
@@ -68,11 +72,11 @@ pub extern "C" fn peripheral_manager_did_add_service_error(
     _service: *mut Object,
     error: *mut Object,
 ) {
-    println!("peripheral_manager_did_add_service_error");
-    if error.into_bool() {
+    log::debug!("peripheral_manager_did_add_service_error");
+    if !error.is_null() {
         let localized_description: *mut Object = unsafe { msg_send![error, localizedDescription] };
         let string = localized_description as *mut NSString;
-        println!("{:?}", unsafe { (*string).as_str() });
+        log::debug!("{:?}", unsafe { (*string).as_str() });
     }
 }
 
